@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>大湾区多城旅行规划器</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="planner">
+      <section class="hero" aria-label="大湾区多城旅行规划器">
+        <img class="hero__image" src="assets/hero-gba.png" alt="大湾区旅行规划场景">
+        <div class="hero__shade"></div>
+        <nav class="topbar" aria-label="页面操作">
+          <a class="brand" href="#plan">
+            <span class="brand__mark" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M3 16.5 21 4l-5.2 16-4-6.1-5.5 3.5L3 16.5Z"></path></svg>
+            </span>
+            湾区行程
+          </a>
+          <div class="topbar__actions">
+            <button class="icon-button" id="savePlan" title="保存到本机" aria-label="保存到本机">
+              <svg viewBox="0 0 24 24"><path d="M5 3h12l2 2v16H5V3Z"></path><path d="M8 3v6h8V3"></path><path d="M8 21v-7h8v7"></path></svg>
+            </button>
+            <button class="icon-button" id="printPlan" title="打印或导出 PDF" aria-label="打印或导出 PDF">
+              <svg viewBox="0 0 24 24"><path d="M6 9V3h12v6"></path><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><path d="M6 14h12v7H6z"></path></svg>
+            </button>
+          </div>
+        </nav>
+
+        <div class="hero__content">
+          <p class="eyebrow">Shanghai to Guangzhou · July 14</p>
+          <h1>大湾区五城旅行规划器</h1>
+          <p class="hero__copy">上海飞广州，串联广州、深圳、香港、澳门、珠海；交通、酒店、饮食、购物和迪士尼日都能实时调整。</p>
+          <div class="hero__metrics" aria-label="行程概览">
+            <span><strong id="heroDays">8</strong> 天</span>
+            <span><strong id="heroCities">5</strong> 城</span>
+            <span><strong id="heroBudget">9800</strong> 元预算</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="workspace" id="plan">
+        <aside class="controls" aria-label="旅行参数">
+          <div class="panel">
+            <div class="panel__header">
+              <h2>出发设置</h2>
+              <button class="mini-button" id="resetPlan">重置</button>
+            </div>
+            <label class="field">
+              <span>出发城市</span>
+              <input id="origin" type="text" value="上海" autocomplete="off">
+            </label>
+            <label class="field">
+              <span>首站</span>
+              <select id="arrivalCity">
+                <option value="广州" selected>广州</option>
+                <option value="深圳">深圳</option>
+                <option value="香港">香港</option>
+                <option value="澳门">澳门</option>
+                <option value="珠海">珠海</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>出发日期</span>
+              <input id="startDate" type="date" value="2026-07-14">
+            </label>
+            <label class="field range-field">
+              <span>总天数 <strong id="daysValue">8</strong></span>
+              <input id="tripDays" type="range" min="4" max="14" value="8">
+            </label>
+          </div>
+
+          <div class="panel">
+            <div class="panel__header">
+              <h2>城市组合</h2>
+              <span class="pill" id="cityCount">5 城</span>
+            </div>
+            <div class="city-grid" id="cityGrid" aria-label="选择目的地"></div>
+            <div class="sequence" id="citySequence" aria-label="城市顺序"></div>
+          </div>
+
+          <div class="panel">
+            <div class="panel__header">
+              <h2>偏好</h2>
+              <span class="pill" id="paceLabel">均衡</span>
+            </div>
+            <label class="field range-field">
+              <span>每日预算 <strong id="budgetValue">1200</strong> 元</span>
+              <input id="dailyBudget" type="range" min="450" max="2600" step="50" value="1200">
+            </label>
+            <label class="field range-field">
+              <span>旅行节奏 <strong id="paceValue">2</strong></span>
+              <input id="pace" type="range" min="1" max="3" step="1" value="2">
+            </label>
+            <div class="focus-tabs" id="focusTabs" role="tablist" aria-label="旅行重点">
+              <button class="tab is-active" data-focus="classic" role="tab">经典</button>
+              <button class="tab" data-focus="food" role="tab">美食</button>
+              <button class="tab" data-focus="design" role="tab">设计</button>
+              <button class="tab" data-focus="slow" role="tab">慢游</button>
+            </div>
+            <label class="checkline">
+              <input id="bufferMode" type="checkbox" checked>
+              <span>跨境日预留通关缓冲</span>
+            </label>
+          </div>
+
+          <div class="panel">
+            <div class="panel__header">
+              <h2>住宿与打卡</h2>
+              <span class="pill" id="hotelLabel">便利型</span>
+            </div>
+            <label class="field">
+              <span>酒店策略</span>
+              <select id="hotelStyle">
+                <option value="smart" selected>交通便利型</option>
+                <option value="comfort">舒适景观型</option>
+                <option value="local">街区体验型</option>
+              </select>
+            </label>
+            <label class="field range-field">
+              <span>购物强度 <strong id="shopValue">2</strong></span>
+              <input id="shoppingLevel" type="range" min="0" max="3" step="1" value="2">
+            </label>
+            <label class="checkline">
+              <input id="foodMode" type="checkbox" checked>
+              <span>每天加入饮食打卡</span>
+            </label>
+            <label class="checkline">
+              <input id="disneyMode" type="checkbox" checked>
+              <span>香港安排迪士尼整日</span>
+            </label>
+          </div>
+
+          <div class="panel collab-panel">
+            <div class="panel__header">
+              <h2>共享协作</h2>
+              <span class="pill" id="collabStatus">本机</span>
+            </div>
+            <div class="collab-card">
+              <span>房间</span>
+              <strong id="roomLabel">未创建</strong>
+              <p id="collabHint">配置云同步后，可生成分享链接，多人联网同时编辑。</p>
+            </div>
+            <div class="collab-actions">
+              <button class="mini-button" id="createRoom" type="button">创建房间</button>
+              <button class="mini-button" id="copyRoomLink" type="button">复制链接</button>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel__header">
+              <h2>AA 账本</h2>
+              <span class="pill" id="expensePeopleLabel">2 人</span>
+            </div>
+            <label class="field">
+              <span>参与 AA 人数</span>
+              <input id="partySize" type="number" min="1" max="20" value="2">
+            </label>
+            <label class="checkline">
+              <input id="expenseMode" type="checkbox" checked>
+              <span>每日卡片显示记账栏</span>
+            </label>
+          </div>
+        </aside>
+
+        <section class="dashboard" aria-label="规划结果">
+          <div class="summary-strip">
+            <article>
+              <span>出发</span>
+              <strong id="summaryStart">7月14日 上海 -> 广州</strong>
+            </article>
+            <article>
+              <span>交通时间</span>
+              <strong id="summaryTransit">0 小时</strong>
+            </article>
+            <article>
+              <span>住宿预算</span>
+              <strong id="summaryHotel">0 元</strong>
+            </article>
+            <article>
+              <span>总预算</span>
+              <strong id="summaryTotal">0 元</strong>
+            </article>
+          </div>
+
+          <div class="module-dock" aria-label="行程模块筛选">
+            <button class="dock-button is-active" data-module="traffic">
+              <svg viewBox="0 0 24 24"><path d="M6 3h12a2 2 0 0 1 2 2v9a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4V5a2 2 0 0 1 2-2Z"></path><path d="M8 21l3-3"></path><path d="M16 21l-3-3"></path></svg>
+              交通
+            </button>
+            <button class="dock-button is-active" data-module="hotel">
+              <svg viewBox="0 0 24 24"><path d="M3 21V9a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v12"></path><path d="M7 7V3h10v4"></path><path d="M7 14h10"></path><path d="M7 21v-7"></path><path d="M17 21v-7"></path></svg>
+              酒店
+            </button>
+            <button class="dock-button is-active" data-module="food">
+              <svg viewBox="0 0 24 24"><path d="M7 2v20"></path><path d="M3 2v7a4 4 0 0 0 8 0V2"></path><path d="M17 2v20"></path><path d="M17 2c3 2 4 5 4 9h-4"></path></svg>
+              饮食
+            </button>
+            <button class="dock-button is-active" data-module="shop">
+              <svg viewBox="0 0 24 24"><path d="M6 8h12l-1 13H7L6 8Z"></path><path d="M9 8a3 3 0 0 1 6 0"></path></svg>
+              购物
+            </button>
+            <button class="dock-button is-active" data-module="disney">
+              <svg viewBox="0 0 24 24"><path d="M12 3l2.2 5.5 5.8.4-4.5 3.7 1.4 5.7L12 15.2l-4.9 3.1 1.4-5.7L4 8.9l5.8-.4L12 3Z"></path></svg>
+              迪士尼
+            </button>
+          </div>
+
+          <div class="planner-grid">
+            <section class="route-panel">
+              <div class="section-title">
+                <h2>路线与交通</h2>
+                <div class="quick-actions">
+                  <button class="mini-button" data-preset="smooth">顺路</button>
+                  <button class="mini-button" data-preset="hkFirst">先香港</button>
+                  <button class="mini-button" data-preset="westLoop">珠澳慢线</button>
+                </div>
+              </div>
+              <div class="map-board">
+                <svg id="routeSvg" viewBox="0 0 820 300" role="img" aria-label="大湾区路线图"></svg>
+              </div>
+              <div class="legs" id="transportLegs"></div>
+            </section>
+
+            <section class="insight-panel">
+              <div class="section-title">
+                <h2>决策面板</h2>
+              </div>
+              <div class="insights" id="insights"></div>
+              <div class="source-box">
+                <h3>购票核验</h3>
+                <a href="https://www.highspeed.mtr.com.hk/en/main/index.html" target="_blank" rel="noreferrer">港铁高铁</a>
+                <a href="https://www.hzmbus.com/" target="_blank" rel="noreferrer">港珠澳大桥穿梭巴士</a>
+                <a href="https://www2.turbojet.com.hk/travel-with-us-sea-ferry/#hkgmacroute" target="_blank" rel="noreferrer">TurboJET 船期</a>
+              </div>
+            </section>
+          </div>
+
+          <section class="hotel-panel">
+            <div class="section-title">
+              <h2>住宿基地</h2>
+              <span class="pill" id="nightCount">7 晚</span>
+            </div>
+            <div class="hotel-grid" id="hotelGrid"></div>
+          </section>
+
+          <section class="expense-panel">
+            <div class="section-title">
+              <h2>AA 账本</h2>
+              <span class="pill" id="expenseTotal">0 元</span>
+            </div>
+            <div class="expense-summary" id="expenseSummary"></div>
+          </section>
+
+          <section class="timeline-panel">
+            <div class="section-title">
+              <h2>每日行程</h2>
+              <div class="view-switch" aria-label="日程视图">
+                <button class="switch is-active" data-view="cards">卡片</button>
+                <button class="switch" data-view="compact">紧凑</button>
+              </div>
+            </div>
+            <div class="timeline" id="timeline"></div>
+          </section>
+
+          <section class="memory-panel">
+            <div class="section-title">
+              <h2>旅行相册</h2>
+              <span class="pill" id="memoryCount">0 张</span>
+            </div>
+            <div class="memory-gallery" id="memoryGallery"></div>
+          </section>
+        </section>
+      </section>
+    </main>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <input class="photo-input" id="photoInput" type="file" accept="image/*" multiple>
+    <script src="firebase-config.js"></script>
+    <script src="script.js"></script>
+  </body>
+</html>
