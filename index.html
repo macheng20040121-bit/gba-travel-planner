@@ -51,6 +51,10 @@
       </section>
 
       <section class="city-workbench" id="cityWorkbench">
+        <div class="city-cover">
+          <img src="assets/hero-gba.png" alt="大湾区旅行规划">
+          <div><span>GREATER BAY AREA</span><strong>一张地图，展开五座城市</strong></div>
+        </div>
         <div class="city-intro">
           <div><p id="cityCode">CAN · GUANGZHOU</p><h2 id="cityTitle">广州</h2></div>
           <div class="city-nav">
@@ -61,6 +65,10 @@
 
         <div class="city-grid">
           <div class="local-map-wrap">
+            <div class="map-mode-switch">
+              <button class="is-active" type="button" data-map-mode="places">景点规划</button>
+              <button type="button" data-map-mode="transit">公交地铁</button>
+            </div>
             <div id="cityMap"></div>
             <div class="poi-legend" id="poiLegend"></div>
           </div>
@@ -75,6 +83,18 @@
             </div>
             <label class="editor-field"><span>我的计划</span><textarea data-plan-field="plan" rows="5" placeholder="景点、时间、预约、交通衔接……"></textarea></label>
             <div class="quick-plans" id="quickPlans"></div>
+            <div class="day-planner">
+              <div class="day-planner__head">
+                <span>分日计划表</span>
+                <button class="secondary-button" id="addPlanRow" type="button">+ 加一行</button>
+              </div>
+              <div class="plan-table-wrap">
+                <table class="plan-table">
+                  <thead><tr><th>日期</th><th>时间</th><th>地标 / 项目</th><th>备注</th><th>定位</th><th></th></tr></thead>
+                  <tbody id="planRows"></tbody>
+                </table>
+              </div>
+            </div>
             <div class="input-row">
               <label><span>饮食打卡</span><input data-plan-field="food" placeholder="餐厅、早茶、小吃"></label>
               <label><span>购物打卡</span><input data-plan-field="shop" placeholder="商场、手信、买手店"></label>
