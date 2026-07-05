@@ -41,6 +41,10 @@ let state = loadState();
 let bayMap;
 let cityMap;
 let poiLayer;
+let plannedLayer;
+let baseCityLayer;
+let transitCityLayer;
+let currentMapMode = "places";
 const bayMarkers = {};
 
 const $ = (id) => document.getElementById(id);
@@ -64,7 +68,8 @@ function saveState(message) {
 }
 
 function planFor(city) {
-  state.plans[city] = state.plans[city] || { transport: cityData[city].transport[0], hotel: "", budget: "", plan: "", food: "", shop: "", notes: "" };
+  state.plans[city] = state.plans[city] || { transport: cityData[city].transport[0], hotel: "", budget: "", plan: "", food: "", shop: "", notes: "", rows: [] };
+  state.plans[city].rows = state.plans[city].rows || [];
   return state.plans[city];
 }
 
@@ -106,12 +111,17 @@ function initMaps() {
   });
 
   cityMap = L.map("cityMap", { zoomControl: false, scrollWheelZoom: false }).setView(cityData[state.selectedCity].center, 12);
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  baseCityLayer = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
   }).addTo(cityMap);
+  transitCityLayer = L.tileLayer("https://tileserver.memomaps.de/tilegen/{z}/{x}/{y}.png", {
+    maxZoom: 18,
+    attribution: 'Map &copy; MeMoMaps CC-BY-SA, data &copy; OpenStreetMap'
+  });
   L.control.zoom({ position: "bottomright" }).addTo(cityMap);
   poiLayer = L.layerGroup().addTo(cityMap);
+  plannedLayer = L.layerGroup().addTo(cityMap);
 }
 
 function renderDock() {
@@ -147,6 +157,7 @@ function renderCity() {
   $("quickPlans").innerHTML = data.quick.map((item) => `<button type="button" class="quick-plan" data-quick="${item}">+ ${item}</button>`).join("");
   document.querySelectorAll("[data-plan-field]").forEach((field) => field.value = plan[field.dataset.planField] ?? "");
   renderCityMap();
+  renderPlanRows();
   renderPhotos();
   $("expenseCity").value = name;
 }
@@ -164,6 +175,7 @@ function renderCityMap() {
     marker.on("click", () => pulsePoi(index));
   });
   $("poiLegend").innerHTML = data.pois.map(([label], index) => `<button type="button" data-poi="${index}">${label}</button>`).join("");
+  renderPlannedLandmarks();
   setTimeout(() => cityMap.invalidateSize(), 150);
 }
 
@@ -176,6 +188,83 @@ function pulsePoi(index) {
     layers[index].setStyle({ radius: 14 });
     setTimeout(() => layers[index].setStyle({ radius: 8 }), 500);
   }
+}
+
+
+function defaultRowDate(index) {
+  const date = new Date(`${state.startDate}T12:00:00`);
+  date.setDate(date.getDate() + index);
+  return date.toISOString().slice(0, 10);
+}
+
+function renderPlanRows() {
+  const rows = planFor(state.selectedCity).rows;
+  $("planRows").innerHTML = rows.length ? rows.map((row, index) => `
+    <tr class="${row.lat ? "is-located" : ""}">
+      <td><input type="date" data-row-field="date" data-row-index="${index}" value="${row.date || ""}"></td>
+      <td><input type="time" data-row-field="time" data-row-index="${index}" value="${row.time || ""}"></td>
+      <td><input data-row-field="place" data-row-index="${index}" value="${row.place || ""}" placeholder="输入地标"></td>
+      <td><input data-row-field="note" data-row-index="${index}" value="${row.note || ""}" placeholder="交通 / 预约"></td>
+      <td><button class="locate-button" type="button" data-locate-row="${index}" title="显示在地图">◎</button></td>
+      <td><button class="remove-button" type="button" data-remove-row="${index}" title="删除">×</button></td>
+    </tr>`).join("") : '<tr><td colspan="6"><div class="empty-state">点击“加一行”开始安排这座城市</div></td></tr>';
+}
+
+function addPlanRow() {
+  const rows = planFor(state.selectedCity).rows;
+  rows.push({ id: crypto.randomUUID(), date: defaultRowDate(rows.length), time: "", place: "", note: "", lat: null, lng: null });
+  renderPlanRows();
+  saveState();
+}
+
+function renderPlannedLandmarks() {
+  if (!plannedLayer) return;
+  plannedLayer.clearLayers();
+  const rows = planFor(state.selectedCity).rows.filter((row) => row.lat && row.lng);
+  const byDate = {};
+  rows.forEach((row, index) => {
+    byDate[row.date] = byDate[row.date] || [];
+    byDate[row.date].push([row.lat, row.lng]);
+    const icon = L.divIcon({ className: "", html: `<div class="planned-marker" style="--marker:${cityData[state.selectedCity].color}">${index + 1}</div>`, iconSize: [25,25], iconAnchor: [12,12] });
+    L.marker([row.lat, row.lng], { icon }).bindPopup(`<strong>${row.place}</strong><br>${row.date || ""} ${row.time || ""}`).addTo(plannedLayer);
+  });
+  Object.values(byDate).forEach((points) => {
+    if (points.length > 1) L.polyline(points, { color: cityData[state.selectedCity].color, weight: 4, opacity: .7, dashArray: "7 7" }).addTo(plannedLayer);
+  });
+}
+
+async function locatePlanRow(index) {
+  const row = planFor(state.selectedCity).rows[index];
+  if (!row?.place) return toast("请先输入地标");
+  toast("正在定位地标");
+  try {
+    const query = encodeURIComponent(`${row.place}, ${state.selectedCity}`);
+    const response = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&accept-language=zh-CN&q=${query}`);
+    const result = (await response.json())[0];
+    if (!result) return toast("没有找到这个地标");
+    row.lat = Number(result.lat);
+    row.lng = Number(result.lon);
+    saveState();
+    renderPlanRows();
+    renderPlannedLandmarks();
+    cityMap.flyTo([row.lat, row.lng], 15, { duration: .8 });
+    toast("已显示在地图");
+  } catch {
+    toast("定位服务暂时不可用");
+  }
+}
+
+function setMapMode(mode) {
+  if (!cityMap || mode === currentMapMode) return;
+  currentMapMode = mode;
+  if (mode === "transit") {
+    cityMap.removeLayer(baseCityLayer);
+    transitCityLayer.addTo(cityMap);
+  } else {
+    cityMap.removeLayer(transitCityLayer);
+    baseCityLayer.addTo(cityMap);
+  }
+  document.querySelectorAll("[data-map-mode]").forEach((button) => button.classList.toggle("is-active", button.dataset.mapMode === mode));
 }
 
 function renderRoute() {
@@ -238,6 +327,28 @@ function syncHeader() {
 }
 
 function bindEvents() {
+  document.querySelector(".map-mode-switch").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-map-mode]");
+    if (button) setMapMode(button.dataset.mapMode);
+  });
+  $("addPlanRow").onclick = addPlanRow;
+  $("planRows").addEventListener("input", (event) => {
+    const input = event.target.closest("[data-row-field]");
+    if (!input) return;
+    const row = planFor(state.selectedCity).rows[Number(input.dataset.rowIndex)];
+    row[input.dataset.rowField] = input.value;
+    if (input.dataset.rowField === "place") { row.lat = null; row.lng = null; }
+    saveState();
+  });
+  $("planRows").addEventListener("click", (event) => {
+    const locate = event.target.closest("[data-locate-row]");
+    if (locate) locatePlanRow(Number(locate.dataset.locateRow));
+    const remove = event.target.closest("[data-remove-row]");
+    if (remove) {
+      planFor(state.selectedCity).rows.splice(Number(remove.dataset.removeRow), 1);
+      renderPlanRows(); renderPlannedLandmarks(); saveState();
+    }
+  });
   ["origin", "startDate", "tripDays", "partySize"].forEach((id) => {
     $(id).addEventListener("input", () => {
       state[id] = id === "tripDays" || id === "partySize" ? Number($(id).value) : $(id).value;
