@@ -45,6 +45,8 @@ let plannedLayer;
 let baseCityLayer;
 let transitCityLayer;
 let currentMapMode = "places";
+let collabApplying = false;
+let collabTimer = null;
 const bayMarkers = {};
 
 const $ = (id) => document.getElementById(id);
@@ -62,6 +64,7 @@ function saveState(message) {
   try {
     localStorage.setItem("gba-map-planner", JSON.stringify(state));
     if (message) toast(message);
+    scheduleCollabSync();
   } catch {
     toast("本机空间不足，请删除部分照片");
   }
@@ -326,6 +329,54 @@ function syncHeader() {
   $("partySize").value = state.partySize;
 }
 
+
+function cloudState() {
+  const shared = JSON.parse(JSON.stringify(state));
+  delete shared.photos;
+  return shared;
+}
+
+function scheduleCollabSync() {
+  if (collabApplying || !window.TogetherJS?.running) return;
+  clearTimeout(collabTimer);
+  collabTimer = setTimeout(() => {
+    window.TogetherJS.send({ type: "gba-trip-state", state: cloudState() });
+  }, 180);
+}
+
+function applySharedState(shared) {
+  if (!shared) return;
+  const localPhotos = state.photos || {};
+  collabApplying = true;
+  state = { ...defaultState, ...shared, photos: localPhotos, plans: shared.plans || {}, expenses: shared.expenses || [] };
+  syncHeader();
+  renderDock();
+  renderRoute();
+  renderExpenses();
+  selectCity(state.selectedCity || "广州");
+  collabApplying = false;
+  localStorage.setItem("gba-map-planner", JSON.stringify(state));
+  toast("已同步同伴的修改");
+}
+
+function initCollaboration() {
+  if (!window.TogetherJS) return;
+  window.TogetherJS.on("ready", () => {
+    $("collabBar").classList.add("is-visible");
+    $("collabStatus").textContent = "实时协作中 · 自动保存";
+    if (!location.hash.includes("togetherjs=")) setTimeout(scheduleCollabSync, 400);
+  });
+  window.TogetherJS.on("close", () => {
+    $("collabStatus").textContent = "协作已暂停 · 本机已保存";
+  });
+  window.TogetherJS.hub.on("hello", () => {
+    setTimeout(() => {
+      if (window.TogetherJS.running) window.TogetherJS.send({ type: "gba-trip-state", state: cloudState() });
+    }, 250);
+  });
+  window.TogetherJS.hub.on("gba-trip-state", (message) => applySharedState(message.state));
+}
+
 function bindEvents() {
   document.querySelector(".map-mode-switch").addEventListener("click", (event) => {
     const button = event.target.closest("[data-map-mode]");
@@ -417,11 +468,18 @@ function bindEvents() {
     renderPhotos(); saveState();
   };
   $("collabButton").onclick = () => {
-    $("collabBar").classList.add("is-visible");
-    $("collabStatus").textContent = "在线协作暂时跳过 · 当前本机保存";
+    if (!window.TogetherJS) return toast("协作服务暂时未加载");
+    if (!window.TogetherJS.running) {
+      window.TogetherJS();
+      toast("正在创建协作房间");
+    } else {
+      $("collabBar").classList.add("is-visible");
+      toast("协作房间已经在线");
+    }
   };
   $("copyInvite").onclick = async () => {
-    try { await navigator.clipboard.writeText(location.href); toast("页面链接已复制"); } catch { toast("请复制浏览器地址栏链接"); }
+    if (!window.TogetherJS?.running) return toast("请先点击右上角“协作”");
+    try { await navigator.clipboard.writeText(window.TogetherJS.shareUrl()); toast("协作邀请链接已复制"); } catch { toast("请复制浏览器地址栏链接"); }
   };
 }
 
@@ -432,3 +490,4 @@ renderExpenses();
 bindEvents();
 initMaps();
 selectCity(state.selectedCity);
+initCollaboration();
